@@ -76,7 +76,30 @@ class Supervisor():
         return вверх|вниз|влево|вправо
         '''
         corner = self.aruco_detections[id][0]
-        
+        center_x = int(np.mean(corner[:, 0]))
+        center_y = int(np.mean(corner[:, 1]))
+        center = (center_x, center_y)
+
+        front_x = int((corner[0][0] + corner[1][0]) / 2)
+        front_y = int((corner[0][1] + corner[1][1]) / 2)
+        front_point = (front_x, front_y)
+
+        delta_x = front_x - center_x
+        delta_y = front_y - center_y
+        angle_rad = np.atan2(delta_y, delta_x)
+        angle_deg = np.deg2rad(angle_rad)
+
+        if -135 < angle_deg < -45:
+            desc = "UP"
+        elif -45 <= angle_deg <= 45:
+            desc = "RIGHT"
+        elif 45 < angle_deg < 135:
+            desc = "DOWN"
+        else:
+            desc = "LEFT"
+
+        return desc
+
 
     def get_field(self, corners, ids):
         '''
