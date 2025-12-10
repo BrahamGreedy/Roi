@@ -4,10 +4,18 @@ import os
 import sys
 
 class Supervisor():
-    def __init__(self, path, row, column, id_corners = [0, 1, 2, 3]):
+    def __init__(self, path, row, column, camera_id, id_corners = [0, 1, 2, 3], id_agents=[4, 5, 6, 7]):
         self.mtx, self.dist = self._get_calibrate_vals(path, row, column)
         # self._normalize_camera(path, mtx, dist)
         self.id_corners = id_corners
+        self.id_agents = id_agents
+        self.cap = cv2.VideoCapture(camera_id)
+        self.frame = None
+        self.crop_field = None
+
+        self.aruco_detections = {} #id: corners
+
+        self.get_frame()
         
     def _normalize_camera(self, img, mtx, dist):
         # img = cv2.imread(os.path.join(path, os.listdir(path)[0]))
@@ -23,17 +31,17 @@ class Supervisor():
         # cv2.imshow('norm', dst)
         # cv2.waitKey(0)
 
-    def aruco_markers_detect(self, frame):
+    def aruco_markers_detect(self):
         '''
         детекция aruco маркеров используя opencv
         '''
-        frame = self._normalize_camera(frame, self.mtx, self.dist)
+        self.frame = self._normalize_camera(self.frame, self.mtx, self.dist)
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
         aruco_params = cv2.aruco.DetectorParameters()
 
         detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
 
-        corners, ids, rejected = detector.detectMarkers(frame)
+        corners, ids, rejected = detector.detectMarkers(self.frame)
         
         # if ids is not None:
         #     # Рисуем рамку и ID
@@ -56,17 +64,26 @@ class Supervisor():
 
         # # Показываем результат
         # cv2.imshow("ArUco Detector", frame)
+        for id, corner in zip(ids, corners): #(ids[0], corners[0]), (1), ... 
+            self.aruco_detections[id] = corner
 
-        return frame, corners, ids
+        return self.frame, corners, ids
 
-    def get_agents_rotate_angle(self):
-        pass
+    def get_agents_rotate_angle(self, id):
+        '''
+        Считаем, что TL-TR это перед наших роботов (стрелочка написана сзади aruco маркеров)
+        и тут относительно всего изображения (арены) выдаем просто направление
+        return вверх|вниз|влево|вправо
+        '''
+        corner = self.aruco_detections[id][0]
+        
 
-    def get_field(self, frame, corners, ids):
+    def get_field(self, corners, ids):
         '''
         тут будем получать кроп фрейма
         '''
-        cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+        # cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+        
         ids = ids.reshape(-1)
 
         coords_m = []
@@ -90,14 +107,18 @@ class Supervisor():
                 #     cv2.circle(frame, (coords_m[i][0], coords_m[i][1]), 5, (0, 0, 255), -1)
                 # cv2.circle(frame, (coords_m[-1][0], coords_m[-1][1]), 5, (0, 0, 255), -1)
                 # cv2.rectangle(frame, (coords_m[0][0], coords_m[0][1]), (coords_m[-1][0], coords_m[-1][1]), (255,0,0), -1)
-                frame = frame[coords_m[0][1]:coords_m[-1][1], coords_m[0][0]:coords_m[-1][0]]
+                self.crop_field = self.frame[coords_m[0][1]:coords_m[-1][1], coords_m[0][0]:coords_m[-1][0]]
 
         # cv2.imshow("Field", frame)
 
-        return frame
+        return self.crop_field
 
-    def get_frame(self):
-        pass
+    def get_frame(self, camera_id):
+        ret, frame = self.cap.read()
+
+        self.frame = frame
+
+        return ret, frame
 
     def _get_calibrate_vals(self, path, row, column):
         objp = np.zeros((row*column,3), np.float32)
@@ -121,48 +142,75 @@ class Supervisor():
         return mtx, dist
     
     def get_field_size(self):
-        return self.crop.shape[:2]
+        return self.crop_field.shape[:2]
     
     def get_robot_data(self):
         '''
         Docstring for get_robot_data
         
         направления, координаты, id (id aruco маркера), состояние робота (двигается ли)
-        '''
-        pass
 
-    def get_breakstone(self):
-        pass
+        в каком виде отправляем данные
+        'id_робота': {
+        'centers_coord': (x, y),
+        #'robot_state': 0/1|False/True, <- пока нет т.к считаем, что роботы исходно недвижимы
+        'direction': вверх|вниз|влево|вправо относительно всей арены (где 0 маркер - вверх)
+        }
+        '''
+        robot_data = {}
+        for id in self.id_agents:
+            corner = self.aruco_detections[id][0]
+            x_min, x_max = corner[:, 0].min(), corner[:, 0].max()
+            y_min, y_max = corner[:, 1].min(), corner[:, 1].max()
+            center_x = int((x_max+x_min)/2)
+            center_y = int((y_max+y_min)/2)
+            direction = self.get_agents_rotate_angle(id)
+            robot_data[id] = {
+                'center_coord': (center_x, center_y),
+                'direction': direction
+            }
+
+        return robot_data
+
+    def get_breakstone_mask(self):
+        crop_hsv = cv2.cvtColor(self.crop_field, cv2.COLOR_RGB2HSV)
+
+        h_min = np.array((56, 34, 23), np.uint8)
+        h_max = np.array((154, 52, 52), np.uint8)
+
+        img_bin = cv2.inRange(crop_hsv, h_min, h_max)
+        # тут могла быть эрозия и дилитация
+        return img_bin
     
 
 obj = Supervisor('imgs', 8, 5)
 
 
-cap = cv2.VideoCapture(0)
+# cap = cv2.VideoCapture(0)
     
-# Увеличим разрешение для лучшего распознавания (опционально)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+# # Увеличим разрешение для лучшего распознавания (опционально)
+# cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+# cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-if not cap.isOpened():
-    print("Ошибка: Камера не найдена!")
-    sys.exit()
+# if not cap.isOpened():
+#     print("Ошибка: Камера не найдена!")
+#     sys.exit()
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
+# while True:
+#     ret, frame = cap.read()
+#     if not ret:
+#         break
     
-    frame, corners, ids = obj.aruco_markers_detect(frame)
+#     frame, corners, ids = obj.aruco_markers_detect(frame)
     
-    if len(corners)>0:
-        # print(corners)
-        # print(ids)
-        frame = obj.get_field(frame, corners, ids)
+#     if len(corners)>0:
+#         # print(corners)
+#         # print(ids)
+#         frame = obj.get_field(frame, corners, ids)
 
-    key = cv2.waitKey(1) & 0xFF
-    if key == ord('q'):
-        break
+#     key = cv2.waitKey(1) & 0xFF
+#     if key == ord('q'):
+#         break
 
-cap.release()
-cv2.destroyAllWindows()
+# cap.release()
+# cv2.destroyAllWindows()
