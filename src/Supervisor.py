@@ -120,6 +120,20 @@ class Supervisor():
 
         return mtx, dist
     
+    def get_field_size(self):
+        return self.crop.shape[:2]
+    
+    def get_robot_data(self):
+        '''
+        Docstring for get_robot_data
+        
+        направления, координаты, id (id aruco маркера), состояние робота (двигается ли)
+        '''
+        pass
+
+    def get_breakstone(self):
+        pass
+    
 
 obj = Supervisor('imgs', 8, 5)
 
