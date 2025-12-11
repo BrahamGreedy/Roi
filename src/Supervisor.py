@@ -16,6 +16,9 @@ class Supervisor():
         self.aruco_detections = {} #id: corners
 
         self.get_frame()
+        frame, corners, ids = self.aruco_markers_detect()
+        self.get_field(corners, ids)
+
         
     def _normalize_camera(self, img, mtx, dist):
         # img = cv2.imread(os.path.join(path, os.listdir(path)[0]))

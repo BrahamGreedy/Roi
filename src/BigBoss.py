@@ -19,20 +19,18 @@ from utils import *
 
 class BigBoss():
     def __init__(self):
-        self.supervisor = Supervisor()
-
         self.agents = {}
         
         self.create_socket()
 
-    def get_field_size(self):
-        self.field_size = self.supervisor.get_field_size()
+    def set_field_size(self, field_size):
+        self.field_size = field_size
 
-    def get_robot_data(self):
-        self.robot_data = self.supervisor.get_robot_data()
+    def set_robot_data(self, robot_data):
+        self.robot_data = robot_data
     
-    def get_breakstone_mask(self):
-        self.breakstone_mask = self.supervisor.get_breakstone_mask()
+    def set_breakstone_mask(self, breakstone_mask):
+        self.breakstone_mask = breakstone_mask
 
     def create_socket(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

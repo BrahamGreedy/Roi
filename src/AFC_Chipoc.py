@@ -1,6 +1,12 @@
 import tkinter as tk
-import socket
 import random
+import numpy as np
+import cv2
+from PIL import Image, ImageTk
+
+from Supervisor import Supervisor
+from BigBoss import BigBoss
+
 
 from config import GRID_W, CELL_SIZE, GRID_H
 
@@ -9,11 +15,28 @@ class AFC_Chipok:
         self.master = master
         title = random.choice(['Тут могла быть ваша реклама', 'Окно управления системы роя роботов'])
         self.master.title(title)
+        self.bb = BigBoss()
+        self.supervisor = Supervisor('imgs', 8, 5, 0)
 
         self.setup_gui()
+        self.bb.set_robot_data(self.supervisor.get_robot_data())
 
     def setup_gui(self):
+        img = cv2.cvtColor(cv2.imread('C:\\Users\\Braham\\Desktop\\roi\\22.jpeg'), cv2.COLOR_BGR2RGB)
+        #cv2 img
+        h, w = img.shape[:2]
+        koeff_y = (GRID_H*CELL_SIZE)/h
+        koeff_x = (GRID_W*CELL_SIZE)/w
+
+        koeff = min(koeff_y, koeff_x)
+        img = cv2.resize(img, None, fx=koeff, fy=koeff, interpolation=cv2.INTER_LINEAR)
+        img = Image.fromarray(img)
+        imgtk = ImageTk.PhotoImage(image=img)
+
         self.canvas = tk.Canvas(self.master, width=GRID_W*CELL_SIZE, height=GRID_H*CELL_SIZE, bg='white')
+        self.canvas.imgtk = imgtk
+        self.canvas.create_image(0, 0, anchor="nw", image=imgtk)
+
         self.canvas.pack(side=tk.LEFT)
 
         panel = tk.Frame(self.master)
