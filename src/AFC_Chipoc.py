@@ -15,6 +15,10 @@ class AFC_Chipok:
         self.master = master
         title = random.choice(['Тут могла быть ваша реклама', 'Окно управления системы роя роботов'])
         self.master.title(title)
+
+        self.flag_krest = 0 # 0 - нет крестика, 1 - куча (красный), 2 - зона (синий)
+        self.krest_coord = (None, None)
+
         self.bb = BigBoss()
         self.supervisor = Supervisor('imgs', 8, 5, 0)
 
@@ -47,15 +51,36 @@ class AFC_Chipok:
         self.log_list = tk.Listbox(panel, height=20, width=30)
         self.log_list.pack()
 
-        tk.Label(panel, text="ЛКМ+E: разместить кучу").pack(pady=(10,0))
+        tk.Label(panel, text="Сначала всегда нажимаем на поле").pack(pady=(10,0))
+        tk.Label(panel, text="ЛКМ+E: разместить кучу").pack()
         tk.Label(panel, text="ЛКМ+Q: первая точка области для выгрузки").pack()
-        tk.Label(panel, text="и ПКМ: вторая точка области для выгрузки").pack()
+        tk.Label(panel, text="далее ПКМ: вторая точка области для выгрузки").pack()
 
         self.status_label = tk.Label(panel, text="...", fg="blue", font=("Arial", 10, "bold"))
         self.status_label.pack(pady=10)
 
-        # self.master.bind("<KeyPress>", self.on_key_press) # тут должны быть кнопки из вики повыше и их функции
-        # self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.master.bind("<KeyPress>", self.on_key_press)
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
+
+    def on_key_press(self, event):
+        if self.krest_coord[0] is None: return
+        
+        # Схема управления "Танк"
+        if event.keysym == 'e': 
+            self.flag_krest = 1 #self.send_order(self.selected_agent_id, "forward")
+            # что-то для создания точки кучи
+        elif event.keysym == 'q': 
+            self.flag_krest = 2 #self.send_order(self.selected_agent_id, "backward")
+
+    def on_canvas_click(self, event):
+        if self.flag_krest == 2:
+            # установка второй точки и зоны выгрузки
+            pass
+        cx = event.x // CELL_SIZE
+        cy = event.y // CELL_SIZE
+
+        self.krest_coord = (cx, cy)
 
     def set_unload_zone(self):
         pass
