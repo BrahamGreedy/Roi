@@ -67,8 +67,12 @@ class Supervisor():
 
         # # Показываем результат
         # cv2.imshow("ArUco Detector", frame)
+        if len(corners) == 0:
+            return self.frame, None, None
+
+
         for id, corner in zip(ids, corners): #(ids[0], corners[0]), (1), ... 
-            self.aruco_detections[id] = corner
+            self.aruco_detections[id.item()] = corner[0]
 
         return self.frame, corners, ids
 
@@ -109,12 +113,20 @@ class Supervisor():
         тут будем получать кроп фрейма
         '''
         # cv2.aruco.drawDetectedMarkers(frame, corners, ids)
-        
-        ids = ids.reshape(-1)
+
+        if corners is None:
+            len_id = 0
+        else:
+            len_id = len(corners)
+
+
 
         coords_m = []
 
-        if ids.shape[0]==4:
+        self.crop_field = self.frame
+
+        if len_id==4:
+            ids = ids.reshape(-1)
             for i, corner in enumerate(corners):
                 corner = corner[0]
                 if ids[i] not in self.id_corners:
@@ -139,7 +151,7 @@ class Supervisor():
 
         return self.crop_field
 
-    def get_frame(self, camera_id):
+    def get_frame(self):
         ret, frame = self.cap.read()
 
         self.frame = frame
@@ -185,6 +197,8 @@ class Supervisor():
         '''
         robot_data = {}
         for id in self.id_agents:
+            if id not in self.aruco_detections.keys():
+                continue
             corner = self.aruco_detections[id][0]
             x_min, x_max = corner[:, 0].min(), corner[:, 0].max()
             y_min, y_max = corner[:, 1].min(), corner[:, 1].max()
@@ -208,35 +222,35 @@ class Supervisor():
         # тут могла быть эрозия и дилитация
         return img_bin
     
-
-obj = Supervisor('imgs', 8, 5)
-
-
-# cap = cv2.VideoCapture(0)
-    
+#
+# obj = Supervisor('imgs', 8, 5, 1)
+#
+#
+# cap = cv2.VideoCapture(1)
+#
 # # Увеличим разрешение для лучшего распознавания (опционально)
 # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-
+#
 # if not cap.isOpened():
 #     print("Ошибка: Камера не найдена!")
 #     sys.exit()
-
+#
 # while True:
 #     ret, frame = cap.read()
 #     if not ret:
 #         break
-    
+#
 #     frame, corners, ids = obj.aruco_markers_detect(frame)
-    
+#
 #     if len(corners)>0:
 #         # print(corners)
 #         # print(ids)
 #         frame = obj.get_field(frame, corners, ids)
-
+#
 #     key = cv2.waitKey(1) & 0xFF
 #     if key == ord('q'):
 #         break
-
+#
 # cap.release()
 # cv2.destroyAllWindows()

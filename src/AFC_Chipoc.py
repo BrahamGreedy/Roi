@@ -20,13 +20,14 @@ class AFC_Chipok:
         self.krest_coord = (None, None)
 
         self.bb = BigBoss()
-        self.supervisor = Supervisor('imgs', 8, 5, 0)
+        self.supervisor = Supervisor(r'C:\Users\Asus\Documents\GitHub\Roi\imgs', 8, 5, 1)
 
         self.setup_gui()
+
         self.bb.set_robot_data(self.supervisor.get_robot_data())
 
     def setup_gui(self):
-        img = cv2.cvtColor(cv2.imread('C:\\Users\\Braham\\Desktop\\roi\\22.jpeg'), cv2.COLOR_BGR2RGB)
+        img = cv2.cvtColor(self.supervisor.crop_field, cv2.COLOR_BGR2RGB)
         #cv2 img
         h, w = img.shape[:2]
         koeff_y = (GRID_H*CELL_SIZE)/h
