@@ -1,6 +1,7 @@
 CELL_SIZE = 30
 GRID_W = 20
 GRID_H = 15
+ID_CAMERA = 0
 
 HOST = ''
 PORT = 666
